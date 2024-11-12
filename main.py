@@ -1,5 +1,7 @@
 import gradio as gr
 
+# BM25 методика
+
 import pandas as pd
 import numpy as np
 from sentence_transformers import SentenceTransformer, util
@@ -47,9 +49,9 @@ terminators = [
     tokenizer.convert_tokens_to_ids("<|eot_id|>")
 ]
 
-SYS_PROMPT = """Ты являешься помощником в ответах на вопросы.
-Тебе выдают фрагменты длинного документа и вопрос. Отвечай на вопросы в разговорной форме.
-Если ты не знаешь ответа, просто скажи "Я не знаю". Не придумывай ответ."""
+SYS_PROMPT = """Ты являешься помощником в ответах на вопросы связанных с Process Mining.
+Тебе выдают фрагменты длинного документа и вопрос. Отвечай на вопросы в краткой деловой форме.
+Если ты не знаешь ответа или вопрос не относится к Process Mining, просто скажи "Я не знаю". Не придумывай ответ."""
 
 
 
@@ -93,7 +95,7 @@ def talk(prompt, history):
       max_new_tokens=1024,
       eos_token_id=terminators,
       do_sample=True,
-      temperature=0.6,
+      temperature=0.3,
       top_p=0.9,
     )
     streamer = TextIteratorStreamer(
@@ -105,7 +107,7 @@ def talk(prompt, history):
         max_new_tokens=1024,
         do_sample=True,
         top_p=0.95,
-        temperature=0.60,
+        temperature=0.3,
         eos_token_id=terminators,
     )
     t = Thread(target=model.generate, kwargs=generate_kwargs)
@@ -114,7 +116,7 @@ def talk(prompt, history):
     outputs = []
     for text in streamer:
         outputs.append(text)
-        print(outputs)
+        # print(outputs)
         yield "".join(outputs)
 
 
