@@ -22,7 +22,7 @@ def get_similarity(query: str, model: SentenceTransformer, database_emb, base_te
 
     reults = pd.DataFrame(base_texts.values, columns=["texts"])
 
-    reults["cos_sim"] = similaritires.cpu().reshape(-1,1)
+    reults["score"] = similaritires.cpu().reshape(-1,1)
 
     return reults
 
@@ -51,21 +51,22 @@ terminators = [
 
 SYS_PROMPT = """Ты являешься помощником в ответах на вопросы связанных с Process Mining.
 Тебе выдают фрагменты длинного документа и вопрос. Отвечай на вопросы в краткой деловой форме.
-Если ты не знаешь ответа или вопрос не относится к Process Mining, просто скажи "Я не знаю". Не придумывай ответ."""
+Если ты не знаешь ответа или вопрос не относится к Process Mining добавь вставку `Не смог найти ответ в базе знаний`.
+Отвечай в срогом соотвествии с данными найденными в базе знаний."""
 
 
 
 def search(query: str, k: int = 4):
     sim_reslut = get_similarity(query, ST, database_emb=database_emb, base_texts=databes_text)
-    sim_reslut = sim_reslut.sort_values(by="cos_sim", ascending=False).head(k)
+    sim_reslut = sim_reslut.sort_values(by="score", ascending=False).head(k)
 
     return sim_reslut
 
 def format_prompt(prompt,retrieved_documents,k):
     PROMPT = f"Question:{prompt}\nContext:"
 
-    if retrieved_documents["cos_sim"].iloc[0] < 0.45:
-        PROMPT+= f"В твой базе знаний нет ответа на данный вопрос. Тебе нужно ответить 'Я не знаю'."
+    if retrieved_documents["score"].iloc[0] < 0.3:
+        PROMPT+= f"В твой базе знаний нет ответа на данный вопрос. Тебе нужно добавить вставку `Не смог найти ответ в базе знаний` и ответить самостоятельно."
         return PROMPT
 
     for idx in range(k) :
@@ -95,7 +96,7 @@ def talk(prompt, history):
       max_new_tokens=1024,
       eos_token_id=terminators,
       do_sample=True,
-      temperature=0.3,
+      temperature=0.35,
       top_p=0.9,
     )
     streamer = TextIteratorStreamer(
@@ -107,7 +108,7 @@ def talk(prompt, history):
         max_new_tokens=1024,
         do_sample=True,
         top_p=0.95,
-        temperature=0.3,
+        temperature=0.35,
         eos_token_id=terminators,
     )
     t = Thread(target=model.generate, kwargs=generate_kwargs)
@@ -127,9 +128,10 @@ demo = gr.ChatInterface(
         show_share_button=True,
         show_copy_button=True,
         layout="bubble",
-        bubble_full_width=False,
+        bubble_full_width=False
     ),
-    examples=[["Что такое Process Mining?"]]
+    
+    examples=[["С чем ты можешь помочь?"]]
     
 )
 demo.launch(debug=True)
